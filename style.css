@@ -1,0 +1,160 @@
+/* Linux Hello homepage. Colours and font stacks follow the branding repository's tokens/tokens.css. */
+
+@font-face { font-family: "Noto Sans"; font-weight: 400; font-display: swap; src: url("assets/fonts/NotoSans-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Noto Sans"; font-weight: 600 700; font-display: swap; src: url("assets/fonts/NotoSans-Bold.woff2") format("woff2"); }
+@font-face { font-family: "Noto Sans Mono"; font-weight: 400; font-display: swap; src: url("assets/fonts/NotoSansMono-Regular.woff2") format("woff2"); }
+
+:root {
+  --lh-blue: #248de0;
+  --lh-blue-300: #85c0ee;
+  --lh-blue-600: #1c7ac5;
+  --lh-blue-800: #155c95;
+  --lh-navy: #263a53;
+  --lh-shadow: #1f2e45;
+  --lh-white: #ffffff;
+  --lh-mist: #e5e9ed;
+  --lh-orange: #f8982a;
+  --lh-ember: #e46030;
+
+  --lh-font-display: "Quicksand", "Nunito", "Varela Round", system-ui, sans-serif;
+  --lh-font-text: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --lh-font-code: "Noto Sans Mono", "Hack", ui-monospace, "DejaVu Sans Mono", monospace;
+
+  --lh-bg: var(--lh-white);
+  --lh-bg-alt: #f2f4f6;
+  --lh-card: var(--lh-white);
+  --lh-line: var(--lh-mist);
+  --lh-text: var(--lh-shadow);
+  --lh-text-secondary: var(--lh-navy);
+  --lh-link: var(--lh-blue-600);
+  --lh-accent: var(--lh-blue);
+  --lh-warn: var(--lh-orange);
+
+  --radius: 14px;
+  --wrap: 68rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lh-bg: var(--lh-shadow);
+    --lh-bg-alt: #1a273b;
+    --lh-card: var(--lh-navy);
+    --lh-line: #34496a;
+    --lh-text: var(--lh-white);
+    --lh-text-secondary: var(--lh-mist);
+    --lh-link: var(--lh-blue-300);
+    --lh-accent: var(--lh-blue-300);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--lh-bg);
+  color: var(--lh-text);
+  font: 400 1rem/1.5 var(--lh-font-text);
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, h3 { font-family: var(--lh-font-display); color: inherit; margin: 0 0 .5em; }
+h1 { font-weight: 700; font-size: clamp(2.1rem, 5vw, 3rem); line-height: 1.1; letter-spacing: -.01em; }
+h2 { font-weight: 700; font-size: clamp(1.6rem, 3.4vw, 2rem); line-height: 1.2; }
+h3 { font-weight: 600; font-size: 1.2rem; line-height: 1.25; }
+p { margin: 0 0 1em; }
+
+a { color: var(--lh-link); text-underline-offset: .15em; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid var(--lh-orange); outline-offset: 2px; border-radius: 4px; }
+
+code { font-family: var(--lh-font-code); font-size: .9em; background: var(--lh-bg-alt); padding: .1em .35em; border-radius: 5px; }
+.alt code { background: var(--lh-card); }
+
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 1.25rem; }
+
+.skip { position: absolute; left: -999px; top: .5rem; background: var(--lh-white); color: var(--lh-shadow); padding: .5rem 1rem; z-index: 10; }
+.skip:focus { left: .5rem; }
+
+/* Brand band. Blue-600 rather than Hello Blue so white body text meets WCAG AA (4.7:1). */
+.band {
+  background: linear-gradient(160deg, var(--lh-blue) 0%, var(--lh-blue-600) 55%, var(--lh-blue-800) 100%);
+  color: var(--lh-white);
+}
+.band a { color: var(--lh-white); }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 1.1rem; padding-bottom: 1.1rem; flex-wrap: wrap; }
+.brand img { display: block; height: auto; }
+nav { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+nav a { text-decoration: none; font-weight: 600; font-size: .95rem; opacity: .92; }
+nav a:hover { opacity: 1; text-decoration: underline; }
+
+.hero { padding-top: 3.5rem; padding-bottom: 4.5rem; max-width: var(--wrap); }
+.hero h1 { max-width: 16ch; }
+.lede { font-size: 1.2rem; max-width: 40rem; margin-bottom: 2rem; }
+
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin: 0; }
+.button {
+  display: inline-block; padding: .7rem 1.3rem; border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.85); font-weight: 600; text-decoration: none;
+}
+.button:hover { background: rgba(255,255,255,.12); text-decoration: none; }
+.band .button.primary { background: var(--lh-white); color: var(--lh-shadow); border-color: var(--lh-white); }
+.band .button.primary:hover { background: var(--lh-mist); }
+
+.notice {
+  margin: -1.75rem 0 0; position: relative;
+  background: var(--lh-card); color: var(--lh-text);
+  border: 1px solid var(--lh-line); border-left: 6px solid var(--lh-warn);
+  border-radius: var(--radius); padding: 1rem 1.25rem;
+  box-shadow: 0 6px 24px rgba(31, 46, 69, .12);
+}
+
+section { padding: 4rem 0; }
+section.wrap { padding: 4rem 1.25rem; }
+.alt { background: var(--lh-bg-alt); }
+.intro { max-width: 44rem; font-size: 1.05rem; color: var(--lh-text-secondary); }
+.more { margin-top: 1.75rem; margin-bottom: 0; color: var(--lh-text-secondary); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.25rem; }
+.cards article {
+  background: var(--lh-card); border: 1px solid var(--lh-line); border-radius: var(--radius);
+  padding: 1.4rem 1.4rem .6rem; border-top: 4px solid var(--lh-accent);
+}
+.cards p { color: var(--lh-text-secondary); }
+
+.layers { list-style: none; padding: 0; margin: 2rem 0 0; display: grid; gap: .6rem; counter-reset: layer; }
+.layers li {
+  counter-increment: layer;
+  display: grid; grid-template-columns: 9.5rem 1fr; align-items: center; gap: 1rem;
+  background: var(--lh-card); border: 1px solid var(--lh-line); border-radius: var(--radius); padding: .9rem 1.2rem;
+}
+.layers .tag { font-family: var(--lh-font-display); font-weight: 700; font-size: 1.05rem; color: var(--lh-link); }
+.layers .tag::before { content: counter(layer) ". "; color: var(--lh-text-secondary); font-weight: 500; }
+@media (max-width: 34rem) { .layers li { grid-template-columns: 1fr; gap: .25rem; } }
+
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 2rem; }
+.split.two { grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 3rem; }
+.split ul { padding: 0; margin: 0; list-style: none; }
+.split li { position: relative; padding-left: 1.6rem; margin-bottom: .6rem; }
+.ticks li::before { content: "✓"; position: absolute; left: 0; color: var(--lh-link); font-weight: 700; }
+.dashes li::before { content: "–"; position: absolute; left: .2rem; color: var(--lh-text-secondary); }
+
+.repos { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.25rem; }
+.repo {
+  display: block; text-decoration: none; color: var(--lh-text);
+  background: var(--lh-card); border: 1px solid var(--lh-line); border-radius: var(--radius); padding: 1.3rem 1.4rem;
+  transition: border-color .15s, transform .15s;
+}
+.repo:hover { border-color: var(--lh-accent); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .repo, .repo:hover { transition: none; transform: none; } }
+.repo .name { display: block; font-family: var(--lh-font-code); font-weight: 400; color: var(--lh-link); font-size: 1.05rem; margin-bottom: .35rem; }
+.repo .desc { display: block; color: var(--lh-text-secondary); }
+
+footer { background: var(--lh-shadow); color: var(--lh-mist); padding: 2rem 0; font-size: .9rem; }
+footer a { color: var(--lh-blue-300); }
+.foot { display: flex; gap: 1rem; align-items: flex-start; }
+.foot img { flex: none; border-radius: 9px; }
+.foot p { margin: 0; }
