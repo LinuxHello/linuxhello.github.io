@@ -39,7 +39,7 @@
       <p class="lede">Unlock once with your face, fingerprint or PIN. Passkeys then work in browsers, native apps and Electron apps, rooted in a PIN and kept in the TPM or KeePassXC.</p>
       <p class="actions">
         <a class="button primary" href="https://github.com/LinuxHello/linux-hello">See the code</a>
-        <a class="button" href="https://github.com/LinuxHello/architecture">Read the architecture</a>
+        <a class="button" href="https://github.com/LinuxHello/linux-hello-architecture">Read the architecture</a>
       </p>
     </div>
   </header>
@@ -92,7 +92,7 @@
           <li><span class="tag">Routing</span><span class="body">Per relying party: device-bound or portable</span></li>
           <li><span class="tag">Providers</span><span class="body">TPM 2.0, <a href="https://keepassxc.org/">KeePassXC</a>, and a hardware security key as fallback</span></li>
         </ol>
-        <p class="more">The full design is in the <a href="https://github.com/LinuxHello/architecture/blob/main/arc42/README.md">Arc42 sections</a>, the C4 model and the <a href="https://github.com/LinuxHello/architecture/blob/main/adr/README.md">decision records</a>. The provider path is <a href="https://github.com/LinuxHello/architecture/blob/main/adr/0005-provider-path.md">ADR-0005</a>.</p>
+        <p class="more">The full design is in the <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/arc42/README.md">Arc42 sections</a>, the C4 model and the <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/README.md">decision records</a>. The provider path is <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0005-provider-path.md">ADR-0005</a>.</p>
       </div>
     </section>
 
@@ -110,7 +110,7 @@
         <div>
           <h3>Proven in a prototype</h3>
           <ul class="ticks">
-            <li>A TPM-backed virtual authenticator, end to end with stock libfido2, Chromium and Firefox (<a href="https://github.com/LinuxHello/architecture/blob/main/spikes/0094-virtual-ctap-end-to-end.md">spike 0094</a>)</li>
+            <li>A TPM-backed virtual authenticator, end to end with stock libfido2, Chromium and Firefox (<a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/spikes/0094-virtual-ctap-end-to-end.md">spike 0094</a>)</li>
             <li>Keys bound to one relying party on a software TPM</li>
           </ul>
         </div>
@@ -143,7 +143,7 @@
             <p>Every one-way decision, from the licence to the D-Bus names, needs an architecture decision record. Every security property has a test whose name states it.</p>
           </article>
         </div>
-        <p class="more">How these work: <a href="https://github.com/LinuxHello/architecture/blob/main/adr/0006-attested-quality-gates-and-releases.md">ADR-0006</a> and <a href="https://github.com/LinuxHello/linux-hello/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+        <p class="more">How these work: <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0006-attested-quality-gates-and-releases.md">ADR-0006</a> and <a href="https://github.com/LinuxHello/linux-hello/blob/main/SECURITY.md">SECURITY.md</a>.</p>
       </div>
     </section>
 
@@ -154,11 +154,11 @@
           <span class="name">linux-hello</span>
           <span class="desc">The code: a Rust workspace with one crate per container, the security profiles and the policy semantics.</span>
         </a>
-        <a class="repo" href="https://github.com/LinuxHello/architecture">
+        <a class="repo" href="https://github.com/LinuxHello/linux-hello-architecture">
           <span class="name">architecture</span>
           <span class="desc">Arc42 sections, the C4 model, decision records and spikes. linux-hello pins it as a submodule.</span>
         </a>
-        <a class="repo" href="https://github.com/LinuxHello/branding">
+        <a class="repo" href="https://github.com/LinuxHello/linux-hello-branding">
           <span class="name">branding</span>
           <span class="desc">The brand guide, the logo and its variants, and the design tokens this page uses.</span>
         </a>
@@ -170,7 +170,7 @@
         <div>
           <h2 id="contribute">Contribute</h2>
           <p>Start with the <a href="https://github.com/LinuxHello/linux-hello/blob/main/docs/project/backlog.md">backlog</a> and <a href="https://github.com/LinuxHello/linux-hello/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>. Every commit is signed off under the <a href="https://developercertificate.org/">Developer Certificate of Origin</a>.</p>
-          <p>Much of the code is written with coding agents in fixed roles (<a href="https://github.com/LinuxHello/architecture/blob/main/adr/0004-agent-roles.md">ADR-0004</a>), and a human decides and merges. The same rules and checks apply whoever wrote a line.</p>
+          <p>Much of the code is written with coding agents in fixed roles (<a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0004-agent-roles.md">ADR-0004</a>), and a human decides and merges. The same rules and checks apply whoever wrote a line.</p>
         </div>
         <div>
           <h2 id="security">Report a vulnerability</h2>
@@ -183,7 +183,7 @@
   <footer>
     <div class="wrap foot">
       <img src="assets/linuxhello-tile.svg" alt="" width="40" height="40">
-      <p>Linux Hello is free software under the <a href="https://github.com/LinuxHello/architecture/blob/main/adr/0002-licence-lgpl-3-or-later.md">LGPL-3.0-or-later</a>. GPL components such as KeePassXC and fprintd are reached across a process boundary only. <a href="https://github.com/LinuxHello/linuxhello.github.io">Source of this page</a>.</p>
+      <p>Linux Hello is free software under the <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0002-licence-lgpl-3-or-later.md">LGPL-3.0-or-later</a>. GPL components such as KeePassXC and fprintd are reached across a process boundary only. <a href="https://github.com/LinuxHello/linuxhello.github.io">Source of this page</a>.</p>
     </div>
   </footer>
 </body>
