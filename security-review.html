@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Linux Hello: security, stability and performance review, November 2026</title>
+  <meta name="description" content="An AI-assisted review of the architecture and source code of Linux Hello at pre-alpha: what is sound, what is not, and why. One high, twelve medium and nineteen lower findings.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#248de0">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Linux Hello: security review, November 2026">
+  <meta property="og:description" content="What a review of the architecture and source code found, good and bad, with the reasoning.">
+  <meta property="og:url" content="https://linuxhello.github.io/security-review.html">
+  <meta property="og:image" content="https://linuxhello.github.io/assets/linuxhello-social-preview-1280x640.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="assets/linuxhello-tile.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/linuxhello-tile-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/linuxhello-tile-180.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="security-review.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="band">
+    <div class="wrap bar">
+      <a class="brand" href="./"><img src="assets/linuxhello-horizontal-white.svg" alt="Linux Hello" width="180" height="46"></a>
+      <nav aria-label="Main">
+        <a href="./">Home</a>
+        <a href="#findings">Findings</a>
+        <a href="#strengths">Strengths</a>
+        <a href="#next">What to fix first</a>
+        <a href="https://github.com/LinuxHello">GitHub</a>
+      </nav>
+    </div>
+
+    <div class="wrap hero small">
+      <h1>Security, stability and performance review</h1>
+      <p class="lede">A review of the architecture and the source code of Linux Hello as they stood on 22 November 2026: what is sound, what is not, and the reasoning behind each judgement.</p>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <aside class="notice" role="note">
+        <strong>This is not an independent audit.</strong> The review was done by an AI model, at the maintainer's request, on pre-alpha code that has had no release. It found real faults and they are listed here unfixed. Linux Hello must not be used to protect anything yet. <a href="#method">How the review was done and what it did not cover</a>
+      </aside>
+    </div>
+
+    <section class="wrap" aria-labelledby="summary">
+      <h2 id="summary">Summary</h2>
+      <div class="prose">
+        <p>Linux Hello decides who gets into a computer, so the project asked for its own work to be examined before anyone relies on it. Much of the code was written by coding agents. This review read all of it with one question first: where can an attacker get in? Stability and performance came second.</p>
+        <p><strong>The foundations are careful.</strong> Every caller is identified by the system bus, never by what a message claims. The PIN is never compared in software and never travels over D-Bus. The PAM module has no path that reports success after an error. Parsers reject what they do not understand. The services run in a tight sandbox, and the build pipeline pins every tool and action it uses.</p>
+        <p><strong>The faults are mostly where separate parts meet.</strong> The most serious one lets a program running as the user capture the effect of a PIN that the user types at a real prompt, and replace the PIN with one it knows. Several others let any local user switch Linux Hello off for everyone, which sends sign-in back to the account password. None of the findings lets one user sign in as another without that user typing a PIN or presenting a finger or face.</p>
+        <p><strong>The central promise is not built yet.</strong> The design says a fingerprint or face only satisfies a policy that the security chip (the TPM) checks, and is never a yes or no held by a program. Today it is a yes or no held by a program, and so is a correct PIN: nothing in the TPM is released by either. The project's own documents say this openly. It is the largest piece of work between this code and something that can be trusted.</p>
+      </div>
+
+      <ul class="facts">
+        <li><span class="n">1</span><span class="l">high finding</span></li>
+        <li><span class="n">12</span><span class="l">medium findings</span></li>
+        <li><span class="n">19</span><span class="l">low findings</span></li>
+        <li><span class="n">20,500</span><span class="l">lines of Rust reviewed, tests not counted</span></li>
+        <li><span class="n">634</span><span class="l">tests, of which 31 are placeholders</span></li>
+        <li><span class="n">0</span><span class="l">known advisories in 122 dependencies</span></li>
+      </ul>
+
+      <h3 class="sub">On this page</h3>
+      <ol class="toc">
+        <li><a href="#method">How the review was done</a></li>
+        <li><a href="#architecture">The architecture</a></li>
+        <li><a href="#strengths">What is done well</a></li>
+        <li><a href="#findings">Findings</a></li>
+        <li><a href="#stability">Stability</a></li>
+        <li><a href="#performance">Performance</a></li>
+        <li><a href="#tests">How far the tests can be trusted</a></li>
+        <li><a href="#next">What to fix first</a></li>
+      </ol>
+    </section>
+
+    <section class="alt" aria-labelledby="method">
+      <div class="wrap">
+        <h2 id="method">How the review was done</h2>
+        <div class="prose">
+          <p>The reviewer was Claude Fable 5.2, an AI model made by Anthropic, working through Claude Code on the maintainer's machine. Six separate review passes ran side by side, one for each trust boundary, and each read its files in full:</p>
+          <ol>
+            <li>the Agent's D-Bus interface and its state;</li>
+            <li>PIN handling, the lockout, and the fingerprint and face methods;</li>
+            <li>the policy engine;</li>
+            <li>the PAM module;</li>
+            <li>the TPM provider, the command-line tool and the Plasma parts;</li>
+            <li>confinement, continuous integration and the release chain.</li>
+          </ol>
+          <p>Each pass reported findings with file and line. The leading finding of every pass, and every finding rated medium or above that rests on code, was then checked again against the source before it was written down here. Where a pass built a small proof of concept outside the repositories, the finding says so. Nothing in any repository was changed by the review.</p>
+          <p><strong>Reviewed:</strong> <code>linux-hello</code> at commit <code>05554d9</code> and <code>linux-hello-architecture</code> at commit <code>7640ab6</code>, both of 22 November 2026, with the security profiles, scripts and workflows in them.</p>
+          <p><strong>What the review did not do.</strong> Please read the findings with these limits in mind:</p>
+          <ul>
+            <li>No finding was exploited against a running Agent on a real system bus. Proofs of concept drove the project's own library code, a fake bus, or a software TPM.</li>
+            <li>Nothing ran on a hardware TPM, under a real display manager, or on a distribution other than the developer's.</li>
+            <li>The virtual machine test scripts and the fuzzers were read, not run. Tests that open sockets could not run inside the review's sandbox.</li>
+            <li>GitHub settings that are hidden from anonymous callers, such as who may bypass a ruleset, were not seen.</li>
+            <li>An AI reviewer misses things and can be confidently wrong. A clean section below means "nothing found", not "nothing there". The outside audit the project plans before a stable release is still needed.</li>
+          </ul>
+          <p><strong>Severity</strong> is rated for the code as it is, in the deployment the prototype installer creates:</p>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Rating</th><th>Meaning here</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sev high">High</span></td><td>An attacker inside the project's own threat model gains a credential or a sign-in they should not have.</td></tr>
+              <tr><td><span class="sev medium">Medium</span></td><td>A stated security property does not hold, a defence can be switched off by an unprivileged user, or a compromise of one part spreads further than the design intends.</td></tr>
+              <tr><td><span class="sev low">Low</span></td><td>A weakness that needs unusual conditions or an earlier compromise, or a fault that only affects reliability.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="architecture">
+      <h2 id="architecture">The architecture</h2>
+      <div class="prose">
+        <p>Linux Hello has one central service, the <em>Agent</em>, which runs as its own unprivileged user and answers on the system bus. A small PAM module inside <code>sudo</code>, the login screen and the lock screen asks the Agent to check a person. The Agent runs the PIN, fingerprint and face methods and reports the outcome. A second service, the <em>TPM provider</em>, is the only code that links the TPM library. Passkeys in the browser, through a virtual security key, are designed and prototyped but are not in the code yet.</p>
+
+        <h3 class="sub">Decisions that hold up well</h3>
+        <ul class="good">
+          <li><strong>The PAM module is a thin client.</strong> It starts no thread, no child process and no async runtime inside <code>sudo</code> or the login screen, and speaks to the bus one message at a time. Code that runs inside another program's process is where crashes and privilege problems come from, so keeping it small is the right call. It links three small libraries.</li>
+          <li><strong>The PIN has its own channel.</strong> It travels over a dedicated socket where the kernel names the sender, never as a D-Bus message that bus monitors or logs could capture.</li>
+          <li><strong>The TPM decides.</strong> The Agent stretches the PIN with Argon2id and the TPM checks the result as a key's authorisation. No stored value on disk can be used to test a PIN guess without the TPM, with one exception listed as R-11.</li>
+          <li><strong>The TPM library is kept out of the Agent.</strong> The process that parses requests from every local user does not contain the large C library that talks to the chip. A check in CI enforces it.</li>
+          <li><strong>Unavailable is not the same as refused.</strong> When Linux Hello is broken the account password still works, and when it is working a wrong PIN ends the attempt. A security component that locks people out gets removed, so this trade is sensible. Its cost is stated in the open: with Linux Hello down, the password alone satisfies a rule that asks for two factors.</li>
+          <li><strong>Decisions are written down.</strong> Twenty-eight decision records, a threat model and a list of numbered security properties exist, and they name their own open questions. Most of what this review found at the design level was already listed there.</li>
+        </ul>
+
+        <h3 class="sub">Where the architecture is not yet what it says</h3>
+        <ul>
+          <li><strong>Biometrics are a flag in a daemon today.</strong> A face match is the exit code of a child process and a fingerprint match is a text in a D-Bus signal. Either one becomes a "success" signal that the PAM module turns into a sign-in. No TPM command is involved. The project's first invariant forbids exactly this, and its documents record the question as open. Until it is answered, the fingerprint service and the face program are trusted completely for sign-in.</li>
+          <li><strong>A correct PIN releases nothing.</strong> The TPM confirms the PIN and the provider returns one byte. No key hangs under the user's root key, there is no unlock state, and no policy session. That is honest for a sign-in prototype, but it means the property "unlock is a satisfied TPM policy, never a flag" has no code behind it.</li>
+          <li><strong>The integrity of a PIN record rests on file permissions alone.</strong> The TPM provider accepts any key that loads under its primary key. Whoever can write a user's record file can install a key whose PIN they chose (R-19). Nothing inside the TPM ties a record to a user.</li>
+          <li><strong>All users share one TPM lockout.</strong> The design answers this with a per-user counter in the Agent that stays below the TPM's limit. That answer is right in principle and does not hold in the code (R-02).</li>
+          <li><strong>Howdy runs inside the Agent's boundary.</strong> The face program is Python code from another project, fed by a camera that anyone in front of the machine can reach before signing in. It runs as the Agent's user with the Agent's files (R-08).</li>
+          <li><strong>Not designed against:</strong> a modified boot chain (the root key is not bound to boot measurements), an active interposer on the TPM's bus, and a keyboard grabber under X11. The threat model says so for the first and the third.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="alt" aria-labelledby="strengths">
+      <div class="wrap">
+        <h2 id="strengths">What is done well</h2>
+        <p class="intro">Each point was checked in the code, not taken from the documentation.</p>
+        <div class="cards">
+          <article>
+            <h3>Callers are identified by the bus</h3>
+            <p>The Agent asks the bus daemon for each caller's user id and refuses when it cannot be read. No id is taken from a message. Calls that carry authority are tied to the one connection that opened the prompt, and bus connection names are never reused, so there is no process-id race.</p>
+          </article>
+          <article>
+            <h3>Nothing is broadcast</h3>
+            <p>Every signal is sent to a named recipient. A test on a real private bus has a bystander that must hear nothing. Refusals are word-for-word the same whether or not another user's prompt exists.</p>
+          </article>
+          <article>
+            <h3>The PAM module cannot fail open</h3>
+            <p>Success comes only from a "success" signal sent by the connection that owns the Agent's name. Every error, timeout, unknown value and panic maps to "unavailable" or "denied". The bus address is a constant, so <code>sudo</code>'s environment cannot redirect it.</p>
+          </article>
+          <article>
+            <h3>Memory-unsafe code is fenced in</h3>
+            <p><code>unsafe</code> appears in one 327-line file of the PAM module and in one generated bridge declaration. Each block was read and found sound: null checks, single frees, and the typed PIN wiped before its memory is released.</p>
+          </article>
+          <article>
+            <h3>The PIN never crosses the TPM's wire in clear</h3>
+            <p>Sessions with the TPM are salted and encrypt their parameters. A test records the traffic to a software TPM and searches it for the secret, with a control case that proves the recorder would see it.</p>
+          </article>
+          <article>
+            <h3>Parsers are strict</h3>
+            <p>Policy files reject unknown keys and values, and survived 30,000 levels of nesting in a probe. The PAM module's D-Bus decoder caps a message at 64 KiB before it allocates and has no loop that can spin. Prompt ids must be exactly 64 hexadecimal characters.</p>
+          </article>
+          <article>
+            <h3>A user cannot loosen the administrator's rules</h3>
+            <p>No input was found that makes a user's policy layer weaken an administrator's, across every field that exists today. A fuzz target checks this property, not merely the absence of a crash.</p>
+          </article>
+          <article>
+            <h3>Reset is authorised properly</h3>
+            <p>The destructive reset asks polkit about the caller's bus connection, needs the person's own password in the session in front, and deletes nothing if polkit is missing, slow or says no.</p>
+          </article>
+          <article>
+            <h3>The sandbox is real</h3>
+            <p>Both services run without capabilities, without a network, with a system-call filter, a closed device policy and no core dumps. The Agent checks its own AppArmor label before anything else and refuses to run unless it is enforced.</p>
+          </article>
+          <article>
+            <h3>The build pipeline is disciplined</h3>
+            <p>Every GitHub Action in every repository is pinned to a full commit hash. Tokens default to read-only. No workflow runs with secrets on code from a fork. Tools are fetched with pinned checksums. No dependency comes from git, and no advisory is ignored.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="findings">
+      <h2 id="findings">Findings</h2>
+      <p class="intro">File references are to <code>linux-hello</code> at the reviewed commit. "Documented" means the project already lists the gap in its own notes; it is repeated here because a reader of this page should see it.</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Id</th><th>Rating</th><th>Finding</th><th>How it was confirmed</th></tr></thead>
+          <tbody>
+            <tr><td class="id"><a href="#r01">R-01</a></td><td><span class="sev high">High</span></td><td>A typed PIN can be taken by another program of the same user, which can then change the PIN</td><td>Proof of concept on the library code; source re-read</td></tr>
+            <tr><td class="id"><a href="#r02">R-02</a></td><td><span class="sev medium">Medium</span></td><td>The per-user PIN lock does not keep wrong tries below the TPM's limit for the whole machine</td><td>Proof of concept for the main cause</td></tr>
+            <tr><td class="id"><a href="#r03">R-03</a></td><td><span class="sev medium">Medium</span></td><td>Any local user can make the PAM module report "unavailable"</td><td>Proof of concept on a fake bus</td></tr>
+            <tr><td class="id"><a href="#r04">R-04</a></td><td><span class="sev medium">Medium</span></td><td>Remote sessions are not refused, so <code>sudo</code> over SSH can start the camera or reader</td><td>Source read</td></tr>
+            <tr><td class="id"><a href="#r05">R-05</a></td><td><span class="sev medium">Medium</span></td><td>One local user can exhaust the Agent's memory and thread limits</td><td>Reasoned from code and unit file</td></tr>
+            <tr><td class="id"><a href="#r06">R-06</a></td><td><span class="sev medium">Medium</span></td><td>A release tag can skip the quality gate</td><td>Workflow read; live ruleset listed</td></tr>
+            <tr><td class="id"><a href="#r07">R-07</a></td><td><span class="sev medium">Medium</span></td><td>The checks a pull request must pass are defined by that pull request</td><td>Workflow and ruleset read</td></tr>
+            <tr><td class="id"><a href="#r08">R-08</a></td><td><span class="sev medium">Medium</span></td><td>Howdy runs with the Agent's user, files and TPM socket (documented)</td><td>Profile read</td></tr>
+            <tr><td class="id"><a href="#r09">R-09</a></td><td><span class="sev medium">Medium</span></td><td>The Agent can open the TPM device although it never does</td><td>Unit, profile and source read</td></tr>
+            <tr><td class="id"><a href="#r10">R-10</a></td><td><span class="sev medium">Medium</span></td><td>A fault in one administrator policy file discards every administrator rule (documented)</td><td>Probe run</td></tr>
+            <tr><td class="id"><a href="#r11">R-11</a></td><td><span class="sev medium">Medium</span></td><td>With PIN history switched on, former PINs can be guessed offline</td><td>Source read</td></tr>
+            <tr><td class="id"><a href="#r12">R-12</a></td><td><span class="sev medium">Medium</span></td><td>Reset, PIN change, enrolment and sign-in outcomes are not audited</td><td>Source read</td></tr>
+            <tr><td class="id"><a href="#r13">R-13</a></td><td><span class="sev medium">Medium</span></td><td>Lowering the PIN attempt limit can refuse every user's PIN until a file is deleted by hand</td><td>Proof of concept</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="finding high" id="r01">
+        <h3><span class="fid">R-01</span>A typed PIN can be taken by another program of the same user <span class="sev high">High</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>A program running as the victim, and the victim typing their PIN once at any real prompt. The project's threat model names this attacker.</dd>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/methods/pin.rs:103-157</code>, <code>src/main.rs:123-125</code>, <code>src/methods/pin/enrol.rs:69-79</code> and <code>179-190</code></dd>
+        </dl>
+        <p><strong>What happens.</strong> When a PIN arrives on the PIN socket, the Agent hands it to "whoever is waiting for this user". Only one waiter per user is kept, and a new one silently replaces the old one. A change of PIN is such a waiter, and any program of the user may start one.</p>
+        <p>So a malicious program starts a PIN change on a prompt of its own, just after the person's real prompt has started. The person types the PIN at the real prompt. The Agent delivers it to the malicious job as the "current PIN". The program then sends a new PIN of its choice, and the TPM accepts the change. The program now knows the user's PIN without ever having known the old one. If <code>sudo</code> uses Linux Hello, it can then become root.</p>
+        <p><strong>Why it is rated high.</strong> The PIN is the root of the whole design, and the decision record for the bus states that a program of the same user cannot change the result of an authentication. A case for a lower rating exists: such a program could also show a fake prompt and ask for the PIN. The difference is that here the person does nothing wrong and sees nothing unusual, except that their sign-in fails once.</p>
+        <p><strong>Related fault.</strong> When an older waiter ends, it removes the entry for the user even if a newer waiter has replaced it, so an honest retry can lose its PIN.</p>
+        <p><strong>Fix.</strong> Tie a PIN to the prompt that announced it, deliver it only to the job started on that prompt, never replace one waiter with another, and let a waiter remove only its own entry.</p>
+      </article>
+
+      <article class="finding medium" id="r02">
+        <h3><span class="fid">R-02</span>The per-user PIN lock does not stay below the TPM's limit <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>Any local account, acting on its own PIN.</dd>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/methods/pin.rs:199-219</code>, <code>src/pinlock.rs:142-144</code>, <code>src/main.rs:96-108</code>, <code>crates/linuxhello-tpm-provider/src/server.rs:99-112</code></dd>
+        </dl>
+        <p>A TPM counts wrong authorisations for the whole machine, so one user could lock everyone's PIN. The Agent is meant to prevent that with its own counter per user. Four things defeat it:</p>
+        <ul>
+          <li><strong>The check and the count are separate steps.</strong> The Agent asks "may this user try?", then runs the slow TPM check, then records a failure. A user may hold 64 prompts, each with its own job, so many wrong PINs are in flight before the first is counted. In a proof of concept with a limit of three, twenty checks reached the verifier.</li>
+          <li><strong>A correct PIN clears the Agent's count but not the TPM's.</strong> By the TPM 2.0 specification the chip's counter only falls with time. A user who knows their own PIN can repeat "four wrong, one right" without ever being locked by the Agent while the chip's counter climbs. This follows from the specification and was not run.</li>
+          <li><strong>The TPM's limit is read once, at start.</strong> The Agent's unit does not wait for the provider, so at boot the cap may never be applied.</li>
+          <li><strong>An abandoned check still runs.</strong> The provider handles one request at a time. If the Agent gives up after 15 seconds, the provider still performs the check later, and the chip counts a failure that the Agent never records.</li>
+        </ul>
+        <p><strong>Fix.</strong> Count the attempt before asking the TPM and take it back on success. Read the chip's real counter before each attempt and refuse when little room is left. Start the Agent after the provider.</p>
+      </article>
+
+      <article class="finding medium" id="r03">
+        <h3><span class="fid">R-03</span>Any local user can make the PAM module report "unavailable" <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>Any local account with a connection to the system bus.</dd>
+          <dt>Where</dt><dd><code>crates/pam-linuxhello/src/client/bus.rs:150-199</code>, <code>src/client/wire.rs:330-336</code></dd>
+        </dl>
+        <p>The module decodes every message it receives in full before it looks at who sent it. Its decoder knows only the few value types the Agent uses. The default policy of the system bus lets any user send a signal to any connection. So one signal carrying, say, a 32-bit signed integer makes the decoder fail, and the module gives up with "unavailable".</p>
+        <p>Sent in a loop, this switches Linux Hello off for every user's <code>sudo</code>, login and unlock, and the account password takes over. Sent just after a wrong PIN, it turns "denied" into "unavailable", so the same attempt goes on to the password prompt, which breaks the project's property P-32. This is a downgrade, not a bypass: the attacker still needs the password.</p>
+        <p>Confirmed against a fake bus through the module's public entry point. Delivery on a real bus daemon follows from the bus policy files and was not run.</p>
+        <p><strong>Fix.</strong> Read the header first, drop messages that are not from the Agent or the bus without decoding their body, and keep "denied" once a PIN was refused.</p>
+      </article>
+
+      <article class="finding medium" id="r04">
+        <h3><span class="fid">R-04</span>Remote sessions are not refused <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>A shell as the user without their password, for example through a stolen SSH key; a policy that allows face or fingerprint for <code>sudo</code>; the user sitting at the machine.</dd>
+          <dt>Where</dt><dd><code>crates/pam-linuxhello/src/entry.rs:272-278</code>; no mention of a remote host, a seat or logind in the module or the Agent</dd>
+        </dl>
+        <p>Neither the PAM module nor the Agent asks whether the person is at this machine. <code>sudo</code> inside an SSH session therefore starts the methods on the local hardware. With face allowed, the person at the desk is matched without doing anything and the remote party becomes root. The fingerprint and face modules of other projects refuse remote sessions for this reason. The threat model does not discuss it.</p>
+        <p><strong>Fix.</strong> Report "unavailable" when PAM names a remote host, and have the Agent require a local, active seat before it starts a sensor.</p>
+      </article>
+
+      <article class="finding medium" id="r05">
+        <h3><span class="fid">R-05</span>One local user can exhaust the Agent's limits <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>Any local account.</dd>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/state.rs:61</code>, <code>src/bus.rs:236, 853, 961, 1028</code>, <code>src/pinkdf.rs:53-57</code>, <code>security/systemd/linuxhello-agent.service:48-49</code></dd>
+        </dl>
+        <p>A user may open 64 prompts and run one job on each. A sign-in job starts a thread for itself and one per method, and the face method starts a Python process. Every PIN check uses 64 MiB for Argon2. The service is limited to 128 tasks and 1 GiB. About fifteen PIN checks at once reach the memory limit, and 64 sign-ins pass the task limit.</p>
+        <p>The thread starts use a call that panics when the system refuses a thread, outside the code that catches panics. A reset job also waits up to two minutes for polkit and cannot be cancelled, while its prompt slot is freed at once.</p>
+        <p>The result is that Linux Hello stops for everyone and sign-in falls back to the password. The arithmetic comes from the code and the unit file; it was not run.</p>
+        <p><strong>Fix.</strong> A small global limit on concurrent PIN work, a limit of running jobs per user far below 64, and thread starts that return an error.</p>
+      </article>
+
+      <article class="finding medium" id="r06">
+        <h3><span class="fid">R-06</span>A release tag can skip the quality gate <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>Permission to push a tag. The maintainer and the coding agents' credentials have it.</dd>
+          <dt>Where</dt><dd><code>.github/workflows/release.yml:9-34</code>; the repository has a branch ruleset and no tag ruleset</dd>
+        </dl>
+        <p>A release starts when a tag is pushed, and GitHub runs the workflow file from the tagged commit. The step that checks "this commit is on <code>main</code> and passed the gate" is part of that same file. A tag on a commit whose workflow has the step removed is still built, signed and published, and the command that <code>SECURITY.md</code> gives users to verify a download accepts it, because it checks only the workflow's path, the tag and the file's digest.</p>
+        <p>No release exists yet, so nothing has been affected.</p>
+        <p><strong>Fix.</strong> A tag ruleset that lets only the maintainer create, move or delete release tags; a protected release environment that needs a reviewer; and a second verification command for users that checks the quality-gate attestation of the tagged commit.</p>
+      </article>
+
+      <article class="finding medium" id="r07">
+        <h3><span class="fid">R-07</span>The checks a pull request must pass are defined by that pull request <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>Write access, or an agent that misbehaves under the maintainer's account.</dd>
+          <dt>Where</dt><dd><code>.github/workflows/ci.yml:35-52, 306-387</code>, <code>scripts/ci/verify-quality-gate.sh:29-43</code>; ruleset: zero required approvals</dd>
+        </dl>
+        <p>The workflow, the list of gates and every gate script are read from the pull request itself. A change that edits them can turn every required check green, and after the merge the run on <code>main</code> signs a valid attestation with the same edited files. Nothing compares the list of gates that passed with a minimum kept elsewhere.</p>
+        <p>Merges need no approving review. The sign-off check looks for a line of text, not for a signature. The project's roles depend on the maintainer reading what is merged, which is a human control, not a technical one. The decision record on agent roles says part of this itself.</p>
+        <p><strong>Fix.</strong> Run the gates from a protected reference as an organisation-level required workflow, have the verifier demand a minimum set of gates, and require a review from a code owner for changes to workflows, gate scripts and security profiles.</p>
+      </article>
+
+      <article class="finding medium" id="r08">
+        <h3><span class="fid">R-08</span>Howdy runs with the Agent's user, files and TPM socket <span class="sev medium">Medium, documented</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>A flaw in Howdy's Python code or its image libraries that a camera picture can trigger. The camera is reachable before sign-in.</dd>
+          <dt>Where</dt><dd><code>security/apparmor/linuxhello-agent:63-81</code>, <code>crates/linuxhello-agent/src/methods/face.rs:64-105</code></dd>
+        </dl>
+        <p>The face program is started as a child of the Agent and inherits its AppArmor profile, because the kernel refused a narrower profile under the unit's settings. It can therefore write the PIN records and the lockout file and reach the TPM provider's socket. Code running there could clear a lockout, or replace a user's PIN record with one whose PIN it chose (see R-19), which is a sign-in bypass. The profile's own comment records this as a follow-up. The interpreter is also started without the options that stop it loading code from user site directories.</p>
+        <p><strong>Fix.</strong> A separate unit, user and profile for the face program with no bus, no state directory and no TPM socket, as already planned.</p>
+      </article>
+
+      <article class="finding medium" id="r09">
+        <h3><span class="fid">R-09</span>The Agent can open the TPM device although it never does <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>Code execution inside the Agent or its Howdy child.</dd>
+          <dt>Where</dt><dd><code>security/systemd/linuxhello.sysusers:4</code>, <code>security/systemd/linuxhello-agent.service:66</code>, <code>security/apparmor/linuxhello-agent:84</code></dd>
+        </dl>
+        <p>The Agent's user is in the group that owns the TPM device, its unit allows the device and its profile allows reading and writing it. Nothing in the Agent's source opens it; the Agent reaches the TPM only through the provider's socket. The three grants are left over from an earlier design and tests pin them in place.</p>
+        <p>They undo the separation the provider exists for. A compromised Agent could send the chip any command, not only the provider's five: create keys with attributes of its choice, drive the machine-wide lockout, or, where the owner password is empty as it usually is on Linux, clear the lockout.</p>
+        <p><strong>Fix.</strong> Remove all three grants and invert the tests.</p>
+      </article>
+
+      <article class="finding medium" id="r10">
+        <h3><span class="fid">R-10</span>A fault in one administrator file discards every administrator rule <span class="sev medium">Medium, documented</span></h3>
+        <dl>
+          <dt>Trigger</dt><dd>A typing mistake or wrong permissions in any file of <code>/etc/linuxhello/policy.d/</code>.</dd>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/policy/load.rs:96-101, 275-292</code></dd>
+        </dl>
+        <p>"Fail closed" here means "only the PIN", built from the built-in defaults. In a probe, an administrator policy asked for a twelve-character PIN, three attempts and two factors for <code>sudo</code>. Adding a second file with one misspelt key gave a six-character minimum, five attempts and one factor. Biometrics are switched off in that state, so it is not weaker in every respect, but an administrator who demanded two factors gets one.</p>
+        <p>For a fault in a <em>user's</em> layer the code keeps the administrator's rules; the same reasoning applies here.</p>
+        <p><strong>Fix.</strong> Keep every administrator file that does parse, or the last good set, and never lower the number of factors.</p>
+      </article>
+
+      <article class="finding medium" id="r11">
+        <h3><span class="fid">R-11</span>With PIN history on, former PINs can be guessed offline <span class="sev medium">Medium; off by default</span></h3>
+        <dl>
+          <dt>Attacker needs</dt><dd>A copy of a user's PIN record: a backup, an unencrypted disk, or the Agent's user.</dd>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/pinrecord.rs:64-76</code>, <code>src/methods/pin/tpm.rs:156-164</code></dd>
+        </dl>
+        <p>The current PIN cannot be guessed away from the machine, because the key it opens is wrapped by the TPM. The history of replaced PINs is different: each entry is an Argon2id hash with its salt, stored in the file. At about a tenth of a second per guess, all four-digit PINs take minutes and all six-digit PINs about 31 hours on one processor core. Former PINs are a good guide to the current one.</p>
+        <p>The default is no history, so a default installation is not affected. The decision record says guessing the history is as slow as guessing against the TPM's key material; that comparison does not hold.</p>
+        <p><strong>Fix.</strong> Key the history with something only the TPM holds, usable only after the current PIN is proven, and correct the record.</p>
+      </article>
+
+      <article class="finding medium" id="r12">
+        <h3><span class="fid">R-12</span>Security-relevant actions leave no audit record <span class="sev medium">Medium</span></h3>
+        <dl>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/audit.rs:59-73</code>, <code>src/bus.rs:1006-1069</code>, <code>tests/security_properties.rs:313-356</code></dd>
+        </dl>
+        <p>The Agent records refusals, policy changes and the PIN-only fallback. It writes nothing for a destructive reset, a first PIN, a PIN change, a fingerprint enrolment or deletion, or the outcome of a sign-in. The security policy promises that every unlock, PIN change and reset is audited. The test named for that promise checks only the five kinds of record that exist, so its name says more than it tests.</p>
+        <p>Related: refusals are written without a rate limit, one journal record per call, so any local user can flood the log.</p>
+      </article>
+
+      <article class="finding medium" id="r13">
+        <h3><span class="fid">R-13</span>Lowering the attempt limit can refuse every user's PIN <span class="sev medium">Medium, stability</span></h3>
+        <dl>
+          <dt>Trigger</dt><dd>An administrator lowers <code>pin.lockout_attempts</code>, or the TPM cap applies on one start and not on the one before, while any user has that many saved failures.</dd>
+          <dt>Where</dt><dd><code>crates/linuxhello-agent/src/pinlock.rs:84-93</code>, <code>src/pinlock/service.rs:145-151</code></dd>
+        </dl>
+        <p>On start the Agent reads the saved counts. A count at or above the limit is treated as a damaged file, and a damaged file refuses every PIN of every user. Nothing recovers from it, not even a reset; someone must delete the file as root. It fails in the safe direction, but it turns a routine policy change into an outage. Confirmed with a proof of concept.</p>
+        <p><strong>Fix.</strong> Treat such a count as a lockout for that one user.</p>
+      </article>
+
+      <h3 class="sub">Low findings</h3>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Id</th><th>Finding and reasoning</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td class="id">R-14</td><td><strong>Two administrator files with no method in common restore the default methods.</strong> One file allowing only fingerprint and another allowing only face combine to an empty list, which the code reads as "not set". Confirmed by a probe. It does not happen when both lists include the PIN.</td><td><code>policy/restrict.rs:120-126</code>, <code>policy/merge.rs:144-147</code></td></tr>
+            <tr><td class="id">R-15</td><td><strong>One slow client holds up all PIN entry.</strong> The PIN socket serves one connection at a time, and its two-second limit applies to each read, not to the connection. A client that sends one byte every 1.9 seconds can hold it for minutes. The table of announced PINs has 64 places for all users together. Confirmed with a proof of concept.</td><td><code>pinsocket.rs:54, 212-292</code></td></tr>
+            <tr><td class="id">R-16</td><td><strong>Two connection attempts in the PAM module have no time limit.</strong> The 250 ms limit starts after the connection is made. A full queue at the bus or at the PIN socket blocks <code>sudo</code> or the login screen without end.</td><td><code>pam-linuxhello/src/client/bus.rs:84</code>, <code>client.rs:277</code></td></tr>
+            <tr><td class="id">R-17</td><td><strong>The prototype installer puts the line too early in the login stack.</strong> In Ubuntu's <code>/etc/pam.d/login</code> it lands before the modules that enforce <code>/etc/nologin</code> and the delay after a failure, so a Linux Hello sign-in skips both. An unknown user name ends the attempt at once, which tells an observer which names exist. If the module file cannot be loaded, the attempt ends with no password prompt.</td><td><code>scripts/prototype/install.sh:45, 125-140</code></td></tr>
+            <tr><td class="id">R-18</td><td><strong>A PIN change counts an outage as a wrong PIN.</strong> When the provider is down or times out during a change, the Agent records a failed attempt against the user. The module's own header says such failures are never counted. Confirmed with a proof of concept.</td><td><code>methods/pin/tpm.rs:171-175</code>, <code>methods/pin/enrol.rs:196</code></td></tr>
+            <tr><td class="id">R-19</td><td><strong>The provider accepts any key that loads.</strong> It does not check a key's attributes. On a software TPM, a key made elsewhere with dictionary-attack protection switched off was accepted and never locked. Records are not tied to a user, and the record from before a PIN change still opens with the old PIN (the last point is documented).</td><td><code>linuxhello-tpm-provider/src/keys.rs:164-180, 248-255</code></td></tr>
+            <tr><td class="id">R-20</td><td><strong>Slow work runs while the Agent's interface is locked.</strong> A status call asks the TPM provider (limit 15 s), fingerprint listing waits for fprintd, and policy changes write and sync a file, all inside bus handlers. While one waits, sign-in calls wait too. The watchdog pings a different interface and would probably not notice.</td><td><code>api.rs:1138-1142</code>, <code>bus.rs:911-923, 444-462</code></td></tr>
+            <tr><td class="id">R-21</td><td><strong>A job's result can land on a newer prompt with the same id.</strong> Results are matched by user and prompt id with no generation number, and re-opening a prompt does not cancel its running job. No way for another user to exploit it was found.</td><td><code>api.rs:233, 868-887</code>, <code>state.rs:306-335</code></td></tr>
+            <tr><td class="id">R-22</td><td><strong>The lockout depends on the wall clock, and counts are saved after the attempt.</strong> Moving the clock forward ends a lockout. A crash between the TPM's answer and the write loses the count. The TPM's own limit remains.</td><td><code>pinlock/service.rs:33-37, 189-221</code></td></tr>
+            <tr><td class="id">R-23</td><td><strong>The <code>unsafe</code> check can be sidestepped.</strong> The script looks for one spelling of the attribute at the start of a line. Other spellings would pass in the three crates that deny rather than forbid unsafe code. The current code is clean.</td><td><code>scripts/ci/unsafe-policy.sh:36</code></td></tr>
+            <tr><td class="id">R-24</td><td><strong>The release build can sign while it compiles other people's code.</strong> The job that builds also holds the signing permission, so a malicious build script could sign a file of its choice as a release.</td><td><code>.github/workflows/release.yml:40-52</code></td></tr>
+            <tr><td class="id">R-25</td><td><strong>An active interposer on the TPM's bus is not resisted.</strong> The encrypted session trusts the public key the chip has just returned. Passive listening is closed and tested. Not mentioned in the threat model.</td><td><code>linuxhello-tpm-provider/src/keys.rs:80-97, 280-301</code></td></tr>
+            <tr><td class="id">R-26</td><td><strong>The Plasma link can freeze or go stale.</strong> A call without a time limit runs on the screen's main thread; a missing Agent at first start is never retried; after an Agent restart every signal is dropped while the screen still shows "reachable". The test its comment cites does not exist.</td><td><code>plasma/linuxhello-plasma/src/link.rs:45-59, 156-217</code></td></tr>
+            <tr><td class="id">R-27</td><td><strong>The command-line tool trusts files in a directory another account owns.</strong> <code>policy show</code> and <code>policy reset</code> run as root in the Agent's state directory without refusing symbolic links or large files, and <code>show</code> prints a user's text, including terminal control characters, to the administrator's terminal.</td><td><code>linuxhello-ctl/src/policy.rs:66-74</code></td></tr>
+            <tr><td class="id">R-28</td><td><strong>Secrets can outlive their use in memory.</strong> The Argon2 library frees its 64 MiB without wiping it, although the decision record says it is wiped. Nothing stops PIN pages reaching swap. The test named for buffer clearing does not exercise the code that derives the key.</td><td><code>pinkdf.rs:110-157</code>, <code>pinsocket/tests.rs:274-287</code></td></tr>
+            <tr><td class="id">R-29</td><td><strong>The TPM provider does not check its own confinement.</strong> Unlike the Agent it relies on its unit alone; started any other way it runs unconfined (documented as pending).</td><td><code>linuxhello-tpm-provider/src/main.rs:30-50</code></td></tr>
+            <tr><td class="id">R-30</td><td><strong>The fingerprint rule for polkit matches on user id only.</strong> Anything running as the Agent's user, including the face program, may verify and enrol fingers for every account.</td><td><code>security/polkit/50-linuxhello-agent.rules:10-17</code></td></tr>
+            <tr><td class="id">R-31</td><td><strong>Dependency checks miss two lock files.</strong> Dependabot and the advisory check in CI do not cover the PAM fuzz crate or the Plasma crate. All four lock files were clean when checked by hand for this review.</td><td><code>.github/dependabot.yml</code>, <code>ci.yml:163</code></td></tr>
+            <tr><td class="id">R-32</td><td><strong>Documents and code have drifted apart.</strong> This site's homepage calls the PAM module, the TPM provider and the command-line tool stubs, although they exist. <code>SECURITY.md</code> says the Agent opens the TPM. The agents' rules mention an unsafe module in the TPM provider that does not exist. The architecture says CI loads every profile; it loads one, in a job that does not block a merge. Several placeholder tests give reasons that are no longer true.</td><td>several</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="alt" aria-labelledby="stability">
+      <div class="wrap">
+        <h2 id="stability">Stability</h2>
+        <div class="prose">
+          <p><strong>What is solid.</strong> Each job and each method runs inside a guard that catches a panic and still reports a result. A sign-in attempt has an overall deadline. Prompts are cleaned up when their owner leaves the bus and again after five minutes of silence, on a clock that cannot run backwards. Record files are written to a temporary file, synced and renamed. A file that cannot be trusted is refused, never replaced by an empty one. The PAM module returns within about 2.3 seconds when the Agent is stopped or hung.</p>
+          <p><strong>What is not.</strong></p>
+          <ul>
+            <li><strong>Restart without pause.</strong> Both units restart one second after any failure, with the start limit switched off. A permanent fault, such as a profile that is not enforced or a TPM with an owner password, restarts the service every second for ever.</li>
+            <li><strong>The provider does not heal.</strong> It creates its primary key once. If that handle becomes invalid, every later request fails until someone restarts the service. It has no watchdog and no resource limits.</li>
+            <li><strong>One thread each.</strong> The provider and the PIN socket each serve one client at a time, so one slow client delays all (R-15).</li>
+            <li><strong>Limits a single user can reach</strong> (R-05), and a lockout file that a policy change can invalidate (R-13).</li>
+            <li><strong>An Agent restart during a sign-in</strong> is not noticed by the PAM module after the PIN was sent; it waits the full 30 seconds before giving up.</li>
+            <li><strong>A slow Agent</strong> can delay the PIN question by up to about 12 seconds, because five calls each have their own two-second limit and there is no limit for the whole.</li>
+            <li><strong>The release workflow has never run.</strong> Its build job does not install the TPM and PAM development packages that CI installs, so the first tag for those two parts will probably fail.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="performance">
+      <h2 id="performance">Performance</h2>
+      <div class="prose">
+        <p>Nothing here is slow today on the developer's test setup. The concern is what happens on real hardware, which has not been tried.</p>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Observation</th><th>Reasoning</th><th>Suggestion</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Every PIN check makes the TPM generate an RSA-2048 key</strong></td><td>To prove the PIN, the provider asks the chip to create a throwaway child key with the RSA storage template. On a software TPM that takes milliseconds. On hardware chips RSA key generation is the slowest operation there is and commonly takes seconds, with wide variation. The client gives up after 15 seconds, which would look like "unavailable" and fall back to the password. This expectation was not measured.</td><td>Prove the authorisation with a cheap object (a sealed blob or keyed hash) or an elliptic-curve key. This is the single most valuable performance change.</td></tr>
+            <tr><td><strong>The primary key is regenerated at every start of the provider</strong></td><td>Another RSA-2048 generation on the chip each boot; nothing is kept at a persistent handle.</td><td>Persist the primary, and compare its name on start (this also addresses R-25).</td></tr>
+            <tr><td><strong>Policy files are read and merged for every question</strong></td><td>Measured at 47 microseconds with the example policy, so it is fine today. Merging match patterns is quadratic: an administrator file of 1,000 KiB took 11 seconds per load. Only root can write such a file. Already listed as technical debt.</td><td>Cache the merged policy and reload on change; cap the patterns per class.</td></tr>
+            <tr><td><strong>Each PIN check uses 64 MiB for about a tenth of a second</strong></td><td>That is the intended cost of Argon2id and is reasonable. A PIN change runs it at least four times, more with history. The risk is many at once (R-05).</td><td>Limit how many run together.</td></tr>
+            <tr><td><strong>Extra round trips on the bus</strong></td><td>Every call to the Agent costs one more exchange to read the caller's identity, and announcing a PIN costs three. A cache for this exists in the code and is unused. A new bus connection is opened for every polkit and fingerprint call.</td><td>Use the cache; reuse connections.</td></tr>
+            <tr><td><strong>The PAM module needs six exchanges before the PIN question</strong></td><td>Paid on every attempt, including for users with nothing enrolled. Not measured on a real system.</td><td>Measure it at the login screen before optimising.</td></tr>
+            <tr><td><strong>CI takes about six minutes</strong></td><td>Fuzzing is the longest job: four targets for 60 seconds each with nine seed files, and the corpus is not kept between runs. That is a smoke test, as the project's own record says.</td><td>Keep the corpus, and run long fuzzing on a schedule.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="alt" aria-labelledby="tests">
+      <div class="wrap">
+        <h2 id="tests">How far the tests can be trusted</h2>
+        <div class="prose">
+          <p>The maintainer reviews behaviour, tests and test results, not Rust. The tests are therefore part of the security design, and they were reviewed as such.</p>
+          <p><strong>Good practice found.</strong> Tests are named after the property they prove. Many run against real things: a private bus daemon, a software TPM with fresh state for each test, and a recorder on the TPM's traffic with a control case. CI fails, not skips, when the software TPM is missing. The confinement job really attempts the forbidden actions and expects a refusal.</p>
+          <p><strong>Where a green result says less than it seems.</strong></p>
+          <ul>
+            <li><strong>The tests for matching website names cannot fail.</strong> Six tests, among them the one for look-alike names such as <code>evilbank.example</code>, assert an answer that is also the answer when nothing matches. The matching code was deliberately broken in three ways in a scratch copy and all 124 policy tests still passed. The matching code itself was probed by hand and is correct.</li>
+            <li><strong>Some names promise more than the test checks</strong>: the audit test (R-12) and the test for cleared PIN buffers (R-28).</li>
+            <li><strong>Thirty-one tests are placeholders</strong> marked to be skipped, among them the central properties: a biometric match alone never releases a key, unlock is a TPM policy session, an unlock expires, and success is only for the user being authenticated. The property list says so. Some placeholders could be written today, and one is already covered by a real test elsewhere.</li>
+            <li><strong>Nothing tests two things at once.</strong> No test runs two jobs for one user, concurrent wrong PINs, or a slow client. R-01, R-02 and R-15 live exactly there.</li>
+            <li><strong>Rules about other users are tested by passing a user id to a function</strong>, not by a second user on a real bus, except in the confinement job.</li>
+            <li><strong>The only <code>unsafe</code> code has no automated test.</strong> The PAM entry points are covered by review and by virtual machine scripts that are not part of the required checks.</li>
+            <li><strong>The fuzz targets miss the faults found here.</strong> The policy target uses one administrator file, so R-14 is out of its reach. The PAM target fuzzes the decoder but not the message loop, where R-03 is. The TPM provider's decoder has no fuzz target.</li>
+          </ul>
+          <p>This matters more for Linux Hello than for most projects. When code is written by agents and trusted through its tests, a test that cannot fail is a hole in the review, and a property whose test is a placeholder has had no review at all.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="next">
+      <h2 id="next">What to fix first</h2>
+      <div class="prose">
+        <ol>
+          <li><strong>Bind a PIN to its prompt (R-01).</strong> It is the one finding that gives an attacker a credential, and the change is small.</li>
+          <li><strong>Remove the Agent's access to the TPM device (R-09).</strong> Three lines of configuration and the tests that pin them.</li>
+          <li><strong>Make the PAM module ignore what it cannot read, and refuse remote sessions (R-03, R-04, R-16).</strong></li>
+          <li><strong>Count PIN attempts before the TPM is asked, and bound concurrent work (R-02, R-05, R-13, R-15).</strong> One change to how attempts are reserved addresses most of it.</li>
+          <li><strong>Protect release tags and the gate definition (R-06, R-07)</strong> before the first release exists.</li>
+          <li><strong>Move Howdy out of the Agent's boundary and have the provider check the keys it loads (R-08, R-19).</strong></li>
+          <li><strong>Repair the tests that cannot fail, and add tests with two actors</strong> for the PIN path.</li>
+          <li><strong>Measure a PIN check on a hardware TPM</strong> and replace the RSA key generation if it is slow.</li>
+          <li><strong>Decide how a fingerprint or face match is tied to the TPM.</strong> Until then, the invariant "biometrics are never a flag in a daemon" describes an intention, and the documentation should say so wherever it states the invariant.</li>
+        </ol>
+        <p>The outside audit the project plans remains necessary. This review should make it cheaper by clearing what a careful reading can find.</p>
+        <p class="fine">Found something this review missed? Please report it privately through the <a href="https://github.com/LinuxHello/linux-hello/security">Security tab</a> of linux-hello, as <a href="https://github.com/LinuxHello/linux-hello/blob/main/SECURITY.md">SECURITY.md</a> describes.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <img src="assets/linuxhello-tile.svg" alt="" width="40" height="40">
+      <p>Review of 22 November 2026, of <code>linux-hello</code> at <code>05554d9</code> and <code>linux-hello-architecture</code> at <code>7640ab6</code>. Linux Hello is free software under the <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0002-licence-lgpl-3-or-later.md">LGPL-3.0-or-later</a>. <a href="https://github.com/LinuxHello/linuxhello.github.io">Source of this page</a>.</p>
+    </div>
+  </footer>
+</body>
+</html>

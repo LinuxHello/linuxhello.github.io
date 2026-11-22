@@ -1,0 +1,50 @@
+/* Additions for security-review.html. Uses the tokens of style.css. */
+
+.hero.small { padding-top: 2.5rem; padding-bottom: 3.5rem; }
+.hero.small h1 { max-width: 24ch; font-size: clamp(1.9rem, 4.4vw, 2.6rem); }
+
+.prose { max-width: 48rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; margin: 0 0 1em; }
+.prose li { margin-bottom: .45rem; }
+
+.toc { columns: 2 16rem; column-gap: 2.5rem; padding-left: 1.3rem; margin: 0; }
+.toc li { margin-bottom: .35rem; break-inside: avoid; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin: 1.5rem 0 0; padding: 0; list-style: none; }
+.facts li { background: var(--lh-card); border: 1px solid var(--lh-line); border-radius: var(--radius); padding: 1rem 1.1rem; }
+.facts .n { display: block; font-family: var(--lh-font-display); font-weight: 700; font-size: 1.7rem; line-height: 1.1; }
+.facts .l { display: block; color: var(--lh-text-secondary); font-size: .92rem; margin-top: .25rem; }
+
+.scroll { overflow-x: auto; margin: 1.25rem 0 0; border: 1px solid var(--lh-line); border-radius: var(--radius); background: var(--lh-card); }
+table { border-collapse: collapse; width: 100%; min-width: 40rem; font-size: .95rem; }
+th, td { text-align: left; vertical-align: top; padding: .65rem .9rem; border-bottom: 1px solid var(--lh-line); }
+th { font-family: var(--lh-font-display); font-weight: 700; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.id { font-family: var(--lh-font-code); white-space: nowrap; }
+
+.sev { display: inline-block; font-weight: 700; font-size: .78rem; letter-spacing: .03em; text-transform: uppercase; padding: .12rem .55rem; border-radius: 999px; border: 2px solid currentColor; white-space: nowrap; }
+.sev.high { color: #b3261e; }
+.sev.medium { color: #9a5b00; }
+.sev.low { color: var(--lh-link); }
+.sev.info { color: var(--lh-text-secondary); }
+@media (prefers-color-scheme: dark) {
+  .sev.high { color: #ff9a8f; }
+  .sev.medium { color: var(--lh-orange); }
+}
+
+.finding { background: var(--lh-card); border: 1px solid var(--lh-line); border-left: 6px solid var(--lh-line); border-radius: var(--radius); padding: 1.3rem 1.4rem .5rem; margin: 1.25rem 0 0; }
+.finding.high { border-left-color: #b3261e; }
+.finding.medium { border-left-color: var(--lh-orange); }
+.finding.low { border-left-color: var(--lh-accent); }
+.finding h3 { margin-bottom: .6rem; }
+.finding h3 .fid { font-family: var(--lh-font-code); font-weight: 400; font-size: .95rem; color: var(--lh-text-secondary); margin-right: .5rem; }
+.finding dl { margin: 0 0 1em; display: grid; grid-template-columns: 9rem 1fr; gap: .45rem 1rem; }
+.finding dt { font-weight: 700; color: var(--lh-text-secondary); }
+.finding dd { margin: 0; }
+@media (max-width: 38rem) { .finding dl { grid-template-columns: 1fr; gap: .1rem; } .finding dd { margin-bottom: .6rem; } }
+
+.good li::marker { color: var(--lh-link); }
+h3.sub { margin-top: 2.25rem; }
+.fine { font-size: .92rem; color: var(--lh-text-secondary); }
+
+footer code { background: rgba(255,255,255,.12); color: inherit; }
