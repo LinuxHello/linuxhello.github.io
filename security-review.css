@@ -48,3 +48,17 @@ h3.sub { margin-top: 2.25rem; }
 .fine { font-size: .92rem; color: var(--lh-text-secondary); }
 
 footer code { background: rgba(255,255,255,.12); color: inherit; }
+
+/* Fix status of a finding. The word is always shown, so colour is never the only signal. */
+.st { display: inline-block; font-weight: 700; font-size: .78rem; letter-spacing: .03em; padding: .12rem .55rem; border-radius: 999px; border: 2px solid currentColor; white-space: nowrap; }
+.st.fixed { color: #1b6e3c; }
+.st.partly { color: #9a5b00; }
+.st.review { color: var(--lh-link); }
+.st.open { color: #b3261e; }
+.st.maint { color: var(--lh-text-secondary); }
+@media (prefers-color-scheme: dark) {
+  .st.fixed { color: #7fd6a0; }
+  .st.partly { color: var(--lh-orange); }
+  .st.open { color: #ff9a8f; }
+}
+#fixes table { min-width: 56rem; }
