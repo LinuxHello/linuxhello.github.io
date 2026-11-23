@@ -113,12 +113,13 @@
           <ul class="ticks">
             <li>A TPM-backed virtual authenticator, end to end with stock libfido2, Chromium and Firefox (<a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/spikes/0094-virtual-ctap-end-to-end.md">spike 0094</a>)</li>
             <li>Keys bound to one relying party on a software TPM</li>
+            <li>A first prototype that unlocks <code>sudo</code> with a PIN kept by the TPM or with a fingerprint, made of the PAM module, the Agent's PIN check, the TPM provider and the command-line tool (<a href="https://github.com/LinuxHello/linux-hello/blob/main/docs/prototype.md">how to try it and remove it</a>)</li>
           </ul>
         </div>
         <div>
           <h3>Not yet started</h3>
           <ul class="dashes">
-            <li>The PAM module, the TPM and KeePassXC providers and the command-line tool are stubs</li>
+            <li>The KeePassXC provider is a stub</li>
             <li>The Plasma prompts, greeter integration and enrolment</li>
             <li>Testing on a hardware TPM</li>
           </ul>
