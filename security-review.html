@@ -49,6 +49,11 @@
         <strong>This is not an independent audit.</strong> The review was done by an AI model, at the maintainer's request, on pre-alpha code that has had no release. It found real faults and they are listed here unfixed. Linux Hello must not be used to protect anything yet. <a href="#method">How the review was done and what it did not cover</a>
       </aside>
     </div>
+    <div class="wrap">
+      <aside class="notice" role="note">
+        <strong>Update, 23 November 2026.</strong> Many of the findings below have been fixed since the review, one stack of pull requests at a time. <a href="#fixes">The table of fixes</a> says, for each finding, what is merged, what is in review and what is still open; the text of each finding is the review as written on 22 November and is not changed.
+      </aside>
+    </div>
 
     <section class="wrap" aria-labelledby="summary">
       <h2 id="summary">Summary</h2>
@@ -513,16 +518,17 @@
     <section class="wrap" aria-labelledby="next">
       <h2 id="next">What to fix first</h2>
       <div class="prose">
+        <p>The order the review proposed, with what has happened to each item as of 23 November 2026. A finding counts as done only when its pull request is merged.</p>
         <ol>
-          <li><strong>Bind a PIN to its prompt (R-01).</strong> It is the one finding that gives an attacker a credential, and the change is small.</li>
-          <li><strong>Remove the Agent's access to the TPM device (R-09).</strong> Three lines of configuration and the tests that pin them.</li>
-          <li><strong>Make the PAM module ignore what it cannot read, and refuse remote sessions (R-03, R-04, R-16).</strong></li>
-          <li><strong>Count PIN attempts before the TPM is asked, and bound concurrent work (R-02, R-05, R-13, R-15).</strong> One change to how attempts are reserved addresses most of it.</li>
-          <li><strong>Protect release tags and the gate definition (R-06, R-07)</strong> before the first release exists.</li>
-          <li><strong>Move Howdy out of the Agent's boundary and have the provider check the keys it loads (R-08, R-19).</strong></li>
-          <li><strong>Repair the tests that cannot fail, and add tests with two actors</strong> for the PIN path.</li>
-          <li><strong>Measure a PIN check on a hardware TPM</strong> and replace the RSA key generation if it is slow.</li>
-          <li><strong>Decide how a fingerprint or face match is tied to the TPM.</strong> Until then, the invariant "biometrics are never a flag in a daemon" describes an intention, and the documentation should say so wherever it states the invariant.</li>
+          <li><strong>Bind a PIN to its prompt (R-01).</strong> It is the one finding that gives an attacker a credential, and the change is small.<br><span class="st fixed">Done</span> Merged in <a href="https://github.com/LinuxHello/linux-hello/pull/381">#381</a>.</li>
+          <li><strong>Remove the Agent's access to the TPM device (R-09).</strong> Three lines of configuration and the tests that pin them.<br><span class="st fixed">Done</span> Merged in <a href="https://github.com/LinuxHello/linux-hello/pull/382">#382</a>.</li>
+          <li><strong>Make the PAM module ignore what it cannot read, and refuse remote sessions (R-03, R-04, R-16).</strong><br><span class="st partly">Mostly done</span> The module ignores what it cannot read (<a href="https://github.com/LinuxHello/linux-hello/pull/383">#383</a>), refuses a remote session, and its connections have a deadline (<a href="https://github.com/LinuxHello/linux-hello/pull/399">#399</a>). The Agent's own check of the caller's session, so that a program that skips the module cannot start the camera or the reader, is in review (<a href="https://github.com/LinuxHello/linux-hello/pull/410">#410</a>).</li>
+          <li><strong>Count PIN attempts before the TPM is asked, and bound concurrent work (R-02, R-05, R-13, R-15).</strong> One change to how attempts are reserved addresses most of it.<br><span class="st partly">Mostly done</span> Merged in <a href="https://github.com/LinuxHello/linux-hello/pull/384">#384</a>. Two causes of R-02 remain: the TPM's counter can be driven to its limit by a loop of wrong and right PINs, and an abandoned check still reaches the chip. Both are in review (<a href="https://github.com/LinuxHello/linux-hello/pull/413">#413</a>); a person who knows their PIN can still hold the counter high for a while, which makes PIN checks unavailable and leaves the password.</li>
+          <li><strong>Protect release tags and the gate definition (R-06, R-07)</strong> before the first release exists.<br><span class="st partly">Partly done</span> Only repository administrators can now create, move or delete a tag, tags must be signed, and the signing job of a release waits for the maintainer's approval (<a href="https://github.com/LinuxHello/linux-hello/pull/405">#405</a>). The release workflow has not run yet. Requiring the same workflows of every pull request (R-07) is an organisation setting and is not done.</li>
+          <li><strong>Move Howdy out of the Agent's boundary and have the provider check the keys it loads (R-08, R-19).</strong><br><span class="st partly">Partly done</span> The provider compares a key's attributes with what it makes itself (<a href="https://github.com/LinuxHello/linux-hello/pull/392">#392</a>). Howdy still runs inside the Agent's boundary, and a key is not yet bound to one user inside the TPM.</li>
+          <li><strong>Repair the tests that cannot fail, and add tests with two actors</strong> for the PIN path.<br><span class="st partly">Partly done</span> The relying-party matching tests assert real differences (<a href="https://github.com/LinuxHello/linux-hello/pull/391">#391</a>), placeholder tests say what they wait for (<a href="https://github.com/LinuxHello/linux-hello/pull/399">#399</a>), and the provider's wire format has fuzz targets (in review, <a href="https://github.com/LinuxHello/linux-hello/pull/412">#412</a>). Tests with two users on a real bus are not done.</li>
+          <li><strong>Measure a PIN check on a hardware TPM</strong> and replace the RSA key generation if it is slow.<br><span class="st open">Not done</span> It needs a hardware TPM.</li>
+          <li><strong>Decide how a fingerprint or face match is tied to the TPM.</strong> Until then, the invariant "biometrics are never a flag in a daemon" describes an intention, and the documentation should say so wherever it states the invariant.<br><span class="st open">Not done</span> It is a design decision with its own spike, and the largest piece of work the review found.</li>
         </ol>
         <p>The outside audit the project plans remains necessary. This review should make it cheaper by clearing what a careful reading can find.</p>
         <p class="fine">Found something this review missed? Please report it privately through the <a href="https://github.com/LinuxHello/linux-hello/security">Security tab</a> of linux-hello, as <a href="https://github.com/LinuxHello/linux-hello/blob/main/SECURITY.md">SECURITY.md</a> describes.</p>
