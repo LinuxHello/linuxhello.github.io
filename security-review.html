@@ -29,6 +29,7 @@
       <a class="brand" href="./"><img src="assets/linuxhello-horizontal-white.svg" alt="Linux Hello" width="180" height="46"></a>
       <nav aria-label="Main">
         <a href="./">Home</a>
+        <a href="#fixes">Fix status</a>
         <a href="#findings">Findings</a>
         <a href="#strengths">Strengths</a>
         <a href="#next">What to fix first</a>
@@ -69,6 +70,7 @@
 
       <h3 class="sub">On this page</h3>
       <ol class="toc">
+        <li><a href="#fixes">Status of the fixes</a></li>
         <li><a href="#method">How the review was done</a></li>
         <li><a href="#architecture">The architecture</a></li>
         <li><a href="#strengths">What is done well</a></li>
@@ -79,6 +81,58 @@
         <li><a href="#next">What to fix first</a></li>
       </ol>
     </section>
+
+<!-- fixes:start -->
+    <section class="alt" aria-labelledby="fixes">
+      <div class="wrap">
+        <h2 id="fixes">Status of the fixes</h2>
+        <div class="prose">
+          <p>The project turned every finding into an issue and works through them in stacks of pull requests, one commit per issue. The plan and its order are in <a href="https://github.com/LinuxHello/linux-hello/issues/380">issue 380</a>. This table is kept up to date as pull requests are merged; it was last changed on 23 November 2026. A finding is called fixed only when its pull request has been merged into the main branch.</p>
+          <p><strong>Of the 32 findings:</strong> 11 fixed, 6 partly fixed, 4 in review, 8 open, and 3 waiting for a decision or a setting that only the maintainer can change.</p>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Id</th><th>Finding</th><th>Status</th><th>Pull requests</th><th>What remains</th></tr></thead>
+            <tbody>
+            <tr><td class="id"><a href="#r01">R-01</a></td><td>A typed PIN can be taken by another program of the same user</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/381">#381</a></td><td>Nothing.</td></tr>
+            <tr><td class="id"><a href="#r02">R-02</a></td><td>The per-user PIN lock does not stay below the TPM's limit</td><td><span class="st partly">Partly fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/384">#384</a></td><td>Two of the four causes are fixed: wrong tries are counted before the TPM is asked, and the TPM's limit is read again after a late start. Still open: a correct PIN does not lower the chip's own count, and an abandoned check still runs in the provider.</td></tr>
+            <tr><td class="id"><a href="#r03">R-03</a></td><td>Any local user can make the PAM module report "unavailable"</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/383">#383</a></td><td>Nothing.</td></tr>
+            <tr><td class="id"><a href="#r04">R-04</a></td><td>Remote sessions are not refused</td><td><span class="st partly">Partly fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/383">#383</a></td><td>The PAM module now refuses a remote session. The Agent does not yet check for a local seat itself; that needs a change to the interface between the module and the Agent, which starts in the architecture repository.</td></tr>
+            <tr><td class="id"><a href="#r05">R-05</a></td><td>One local user can exhaust the Agent's limits</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/384">#384</a></td><td>Nothing.</td></tr>
+            <tr><td class="id"><a href="#r06">R-06</a></td><td>A release tag can skip the quality gate</td><td><span class="st maint">Needs the maintainer</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/394">#394</a></td><td>The workflow part is a patch in the pull request, and the tag ruleset is a repository setting. Both are for the maintainer.</td></tr>
+            <tr><td class="id"><a href="#r07">R-07</a></td><td>The checks a pull request must pass are defined by that pull request</td><td><span class="st maint">Needs the maintainer</span></td><td>None yet</td><td>A repository setting (required workflows), for the maintainer.</td></tr>
+            <tr><td class="id"><a href="#r08">R-08</a></td><td>Howdy runs with the Agent's user, files and TPM socket</td><td><span class="st open">Open</span></td><td>None yet</td><td>Needs its own unit and profile, which is a larger piece of work.</td></tr>
+            <tr><td class="id"><a href="#r09">R-09</a></td><td>The Agent can open the TPM device although it never does</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/382">#382</a></td><td>Nothing.</td></tr>
+            <tr><td class="id"><a href="#r10">R-10</a></td><td>A fault in one administrator file discards every administrator rule</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/391">#391</a></td><td>Nothing.</td></tr>
+            <tr><td class="id"><a href="#r11">R-11</a></td><td>With PIN history on, former PINs can be guessed offline</td><td><span class="st open">Open</span></td><td>None yet</td><td>The decision record's claim has to be corrected first, in the architecture repository.</td></tr>
+            <tr><td class="id"><a href="#r12">R-12</a></td><td>Security-relevant actions leave no audit record</td><td><span class="st review">In review</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/393">#393</a></td><td>Refusals are rate limited and counted. Records for reset, PIN set and change, enrolment and sign-in outcomes are still to be written.</td></tr>
+            <tr><td class="id"><a href="#r13">R-13</a></td><td>Lowering the attempt limit can refuse every user's PIN</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/384">#384</a></td><td>Nothing.</td></tr>
+            <tr><td class="id">R-14</td><td>Two administrator files with no method in common restore the default methods</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/391">#391</a></td><td>Nothing.</td></tr>
+            <tr><td class="id">R-15</td><td>One slow client holds up all PIN entry</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/384">#384</a></td><td>Nothing.</td></tr>
+            <tr><td class="id">R-16</td><td>Two connection attempts in the PAM module have no time limit</td><td><span class="st open">Open</span></td><td>None yet</td><td>Not yet done.</td></tr>
+            <tr><td class="id">R-17</td><td>The prototype installer puts the line too early in the login stack</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/383">#383</a></td><td>Nothing.</td></tr>
+            <tr><td class="id">R-18</td><td>A PIN change counts an outage as a wrong PIN</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/395">#395</a></td><td>Nothing.</td></tr>
+            <tr><td class="id">R-19</td><td>The provider accepts any key that loads</td><td><span class="st partly">Partly fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/392">#392</a></td><td>The provider now compares a key's attributes with what it makes itself. Tying a record to one user inside the TPM is still open.</td></tr>
+            <tr><td class="id">R-20</td><td>Slow work runs while the Agent's interface is locked</td><td><span class="st open">Open</span></td><td>None yet</td><td>Not yet done.</td></tr>
+            <tr><td class="id">R-21</td><td>A job's result can land on a newer prompt with the same id</td><td><span class="st open">Open</span></td><td>None yet</td><td>Not yet done.</td></tr>
+            <tr><td class="id">R-22</td><td>The lockout depends on the wall clock, and counts are saved after the attempt</td><td><span class="st partly">Partly fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/395">#395</a></td><td>The directory is now synced after each rename. Still open: the lockout clock, and a re-check of the lock after the PIN arrives.</td></tr>
+            <tr><td class="id">R-23</td><td>The unsafe check can be sidestepped</td><td><span class="st fixed">Fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/394">#394</a></td><td>Nothing.</td></tr>
+            <tr><td class="id">R-24</td><td>The release build can sign while it compiles other people's code</td><td><span class="st maint">Needs the maintainer</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/394">#394</a></td><td>A patch is in the pull request; workflow files need a token the project's agents do not have.</td></tr>
+            <tr><td class="id">R-25</td><td>An active interposer on the TPM's bus is not resisted</td><td><span class="st open">Open</span></td><td>None yet</td><td>Needs a stored primary name and a plan for a cleared TPM.</td></tr>
+            <tr><td class="id">R-26</td><td>The Plasma link can freeze or go stale</td><td><span class="st open">Open</span></td><td>None yet</td><td>Not yet done.</td></tr>
+            <tr><td class="id">R-27</td><td>The command-line tool trusts files in a directory another account owns</td><td><span class="st review">In review</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/393">#393</a></td><td>The command-line tool no longer follows links and escapes control characters. The Agent's own loaders are still to be changed the same way.</td></tr>
+            <tr><td class="id">R-28</td><td>Secrets can outlive their use in memory</td><td><span class="st review">In review</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/393">#393</a></td><td>The Argon2 memory is wiped and both units refuse swap. Still open: the provider's request buffer, locking pages, and terminal echo in the tool.</td></tr>
+            <tr><td class="id">R-29</td><td>The TPM provider does not check its own confinement</td><td><span class="st partly">Partly fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/382">#382</a></td><td>The provider checks its profile, stops after repeated failures and restarts with a back-off. A watchdog is still missing.</td></tr>
+            <tr><td class="id">R-30</td><td>The fingerprint rule for polkit matches on user id only</td><td><span class="st open">Open</span></td><td>None yet</td><td>Not yet done.</td></tr>
+            <tr><td class="id">R-31</td><td>Dependency checks miss two lock files</td><td><span class="st partly">Partly fixed</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/394">#394</a></td><td>Dependabot now watches them. The change to the advisory check is a workflow patch in the pull request, for the maintainer.</td></tr>
+            <tr><td class="id">R-32</td><td>Documents and code have drifted apart</td><td><span class="st review">In review</span></td><td><a href="https://github.com/LinuxHello/linux-hello/pull/393">#393</a></td><td>The security policy file is corrected. The architecture notes and decision records are changed in the architecture repository first.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="fine">The text of the findings below is the review as written on 22 November 2026 and is not changed when a fix lands.</p>
+      </div>
+    </section>
+    <!-- fixes:end -->
 
     <section class="alt" aria-labelledby="method">
       <div class="wrap">
