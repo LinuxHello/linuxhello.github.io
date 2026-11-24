@@ -48,7 +48,7 @@
   <main id="main">
     <div class="wrap">
       <aside class="notice" role="note">
-        <strong>Pre-alpha.</strong> Nothing here authenticates anyone yet, and there are no releases. Please do not rely on Linux Hello to protect anything. <a href="#status">What exists today</a>
+        <strong>Pre-alpha.</strong> A first prototype can unlock <code>sudo</code>, but there are no releases and no external audit. Please do not rely on Linux Hello to protect anything. <a href="#status">What exists today</a>
       </aside>
     </div>
 
@@ -103,8 +103,12 @@
         <div>
           <h3>Built and tested</h3>
           <ul class="ticks">
-            <li>The Agent's state API on the system bus</li>
-            <li>The routing policy engine and the per-user policy store</li>
+            <li>The Agent, the service at the centre: its state API on the system bus, the routing policy engine and the per-user policy layer, the fingerprint method through fprintd and the face method through Howdy, audit records, and the reset after a forgotten PIN</li>
+            <li>The PIN, stretched and checked by the TPM, with a lockout per user</li>
+            <li>The TPM provider, the one program that talks to the TPM, tested on a software TPM</li>
+            <li>The PAM module, which asks the Agent in <code>sudo</code>, at the login screen, at the lock screen and when a session is unlocked, and leaves your account password in charge when Linux Hello is not there</li>
+            <li>The command-line tool, which sets and changes the PIN and shows the state</li>
+            <li>The Plasma parts: the Agent Link, the Auth Prompt and Linux Hello's own login screen, tested in a desktop test VM</li>
             <li>The Agent's confinement: D-Bus policy, systemd unit and AppArmor profile, tested in virtual machines</li>
           </ul>
         </div>
@@ -117,15 +121,17 @@
           </ul>
         </div>
         <div>
-          <h3>Not yet started</h3>
+          <h3>Not built yet</h3>
           <ul class="dashes">
-            <li>The KeePassXC provider is a stub</li>
-            <li>The Plasma prompts, greeter integration and enrolment</li>
-            <li>Testing on a hardware TPM</li>
+            <li>Passkeys in the browser through the virtual security key, which exists only as the prototype on the left</li>
+            <li>The KeePassXC provider, which is a stub</li>
+            <li>The page in Plasma's System Settings</li>
+            <li>Tests on a hardware TPM</li>
+            <li>An independent security audit</li>
           </ul>
         </div>
       </div>
-      <p class="more">The <a href="https://github.com/LinuxHello/linux-hello#readme">README of linux-hello</a> is the current account of what is built.</p>
+      <p class="more">The <a href="https://github.com/LinuxHello/linux-hello#readme">README of linux-hello</a> is the current account of what is built. An AI-assisted review of the code in November 2026 is not an audit; <a href="security-review.html#fixes">which of its findings are fixed</a> is listed on its page.</p>
     </section>
 
     <section class="alt" aria-labelledby="trust">
@@ -145,7 +151,7 @@
             <p>Every one-way decision, from the licence to the D-Bus names, needs an architecture decision record. Every security property has a test whose name states it.</p>
           </article>
         </div>
-        <p class="more">How these work: <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0006-attested-quality-gates-and-releases.md">ADR-0006</a> and <a href="https://github.com/LinuxHello/linux-hello/blob/main/SECURITY.md">SECURITY.md</a>. What a review of the code found in November 2026, good and bad: <a href="security-review.html">the security review</a>.</p>
+        <p class="more">How these work: <a href="https://github.com/LinuxHello/linux-hello-architecture/blob/main/adr/0006-attested-quality-gates-and-releases.md">ADR-0006</a> and <a href="https://github.com/LinuxHello/linux-hello/blob/main/SECURITY.md">SECURITY.md</a>. What a review of the code found in November 2026, good and bad, and how far the fixes have come: <a href="security-review.html">the security review</a>.</p>
       </div>
     </section>
 
